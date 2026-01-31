@@ -44,7 +44,7 @@ class _EducationScreenState extends State<EducationScreen> {
       String cleanPath = _slides[index].audioPath.replaceFirst('assets/', '');
       await _audioPlayer.play(AssetSource(cleanPath));
     } catch (e) {
-      print("Ses dosyası bulunamadı veya hata: $e");
+      debugPrint("Ses dosyası bulunamadı veya hata: $e");
     }
   }
 
@@ -225,7 +225,7 @@ class _EducationScreenState extends State<EducationScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(30),
         ),
         child: Row(

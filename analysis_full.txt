@@ -1,0 +1,11 @@
+Analyzing meme_sagligi_asistani...                              
+
+   info - The private field _answers could be 'final' - lib\screens\assessment_screen.dart:22:21 - prefer_final_fields
+   info - Statements in an if should be enclosed in a block - lib\screens\assessment_screen.dart:80:9 - curly_braces_in_flow_control_structures
+warning - This default clause is covered by the previous cases - lib\screens\assessment_screen.dart:185:7 - unreachable_switch_default
+   info - Don't invoke 'print' in production code - lib\screens\education_screen.dart:47:7 - avoid_print
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\education_screen.dart:228:24 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\home_screen.dart:124:28 - deprecated_member_use
+warning - Unused import: 'package:flutter/material.dart' - test\widget_test.dart:1:8 - unused_import
+
+7 issues found. (ran in 5.0s)

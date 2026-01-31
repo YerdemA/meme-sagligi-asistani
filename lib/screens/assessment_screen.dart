@@ -19,7 +19,7 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
   int _currentIndex = 0;
 
   // Cevapları tuttuğumuz harita (Soru ID -> Cevap)
-  Map<int, dynamic> _answers = {};
+  final Map<int, dynamic> _answers = {};
 
   @override
   void initState() {
@@ -76,8 +76,9 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
     _answers.forEach((key, value) {
       if (value == true) totalScore += 3; // Evet cevapları risklidir
       if (value is int && value > 40) totalScore += 2; // Yaş riski
-      if (value.toString() == "Anne / Kız Kardeş")
-        totalScore += 5; // Genetik risk
+      if (value.toString() == "Anne / Kız Kardeş") {
+        totalScore += 5;
+      } // Genetik risk
     });
 
     Navigator.pushReplacement(
@@ -182,8 +183,7 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
               .toList(),
         );
 
-      default:
-        return const Text("Hata: Bilinmeyen soru tipi");
+
     }
   }
 }
