@@ -1,11 +1,38 @@
 import 'package:flutter/material.dart';
 import '../config/constants.dart';
+import '../services/tts_service.dart'; // 1. TTS Servis import edildi
 import 'education_screen.dart';
 import 'assessment_screen.dart';
-// İleride buraya diğer sayfaları import edeceğiz
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  // DÜZELTME: initState kullanımı için StatefulWidget yapıldı
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // 2. TTS Servis nesnesi tanımlandı
+  final TtsService _ttsService = TtsService();
+
+  @override
+  void initState() {
+    super.initState();
+    // 3. Karşılama Seslendirmesi: Uygulama açılınca kullanıcıyı bilgilendirir
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ttsService.speak(
+        "Meme Sağlığı Asistanına Hoş Geldiniz. Lütfen yapmak istediğiniz işlemi seçin. Kendi kendine muayeneyi öğrenmek için ekranın üst kısmındaki pembe butona, Risk testini yapmak için alt kısımdaki yeşil butona basabilirsiniz.",
+        rate: 0.42, // Giriş için anlaşılır ve nazik bir hız
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _ttsService.stop(); // 4. Sayfadan ayrılınca sesi susturur
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +53,7 @@ class HomeScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
                     color: Colors.black12,
                     blurRadius: 10,
@@ -34,7 +61,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Row(
+              child: const Row(
                 children: [
                   Icon(Icons.info_outline, color: AppColors.primary, size: 32),
                   SizedBox(width: 12),
@@ -53,11 +80,11 @@ class HomeScreen extends StatelessWidget {
             Expanded(
               child: _HomeButton(
                 title: "Muayene Öğren",
-                icon: Icons.accessibility_new_rounded, // Vücut/İnsan ikonu
+                icon: Icons.accessibility_new_rounded,
                 color: AppColors.primary,
                 onTap: () {
-                  // Eski hali: print("Eğitim tıklandı");
-                  // Yeni hali:
+                  // 5. Navigasyon öncesi sesi durdurur ve sayfaya geçer
+                  _ttsService.stop();
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -74,10 +101,11 @@ class HomeScreen extends StatelessWidget {
             Expanded(
               child: _HomeButton(
                 title: "Risk Testi Yap",
-                icon:
-                    Icons.medical_services_outlined, // Doktor çantası/Steteskop
-                color: AppColors.success, // Güven veren yeşil tonu
+                icon: Icons.medical_services_outlined,
+                color: AppColors.success,
                 onTap: () {
+                  // 6. Navigasyon öncesi sesi durdurur ve sayfaya geçer
+                  _ttsService.stop();
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -95,7 +123,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// Tekrar eden kod yazmamak için özel buton widget'ı
 class _HomeButton extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -135,17 +162,24 @@ class _HomeButton extends StatelessWidget {
             Text(
               title,
               style: const TextStyle(
-                fontSize: 28, // Okuma güçlüğü için büyük font
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
             const SizedBox(height: 5),
-            const Icon(
-              Icons.volume_up,
-              color: Colors.white70,
-              size: 24,
-            ), // Sesli anlatım imgesi
+            const Row(
+              // DEĞİŞİKLİK: Ses imgesini daha profesyonel bir hale getirdik
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.volume_up, color: Colors.white70, size: 20),
+                SizedBox(width: 5),
+                Text(
+                  "Sesli Rehber Aktif",
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
           ],
         ),
       ),
