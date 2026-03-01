@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/constants.dart';
 import '../data/question_data.dart';
 import '../models/question_model.dart';
+import '../services/tts_service.dart';
 import 'result_screen.dart';
 
 class AssessmentScreen extends StatefulWidget {
@@ -12,82 +13,95 @@ class AssessmentScreen extends StatefulWidget {
 }
 
 class _AssessmentScreenState extends State<AssessmentScreen> {
-  // Ekranda gösterilecek aktif soru listesi (Kopyasını alıyoruz ki ekleme yapabilelim)
+  final TtsService _ttsService = TtsService();
   List<Question> _displayQuestions = [];
-
-  // Şu an kaçıncı sorudayız?
   int _currentIndex = 0;
-
-  // Cevapları tuttuğumuz harita (Soru ID -> Cevap)
   final Map<int, dynamic> _answers = {};
 
   @override
   void initState() {
     super.initState();
-    // Veritabanından HAM soruları çek
     var rawQuestions = getQuestions();
-    // Sadece "Ana Soruları" (parentId'si olmayanları) listeye al
     _displayQuestions = rawQuestions.where((q) => q.parentId == null).toList();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_displayQuestions.isNotEmpty) {
+        // GÜNCELLEME: Soru ve seçenekleri birlikte okur
+        _speakQuestionAndOptions(_displayQuestions[_currentIndex]);
+      }
+    });
   }
 
-  // --- MANTIK MOTORU ---
+  // YENİ YARDIMCI FONKSİYON: Ana yapıyı bozmadan seçenekleri metne ekler
+  void _speakQuestionAndOptions(Question q) {
+    String textToSpeak = q.text;
+
+    if (q.type == QuestionType.yesNo) {
+      textToSpeak += ". Seçenekler: Hayır ve Evet.";
+    } else if (q.type == QuestionType.selection && q.options != null) {
+      textToSpeak += ". Seçenekler: ${q.options!.join(", ")}.";
+    }
+
+    _ttsService.speak(textToSpeak);
+  }
+
   void _handleAnswer(dynamic answer) {
-    // 1. Cevabı kaydet
     Question currentQ = _displayQuestions[_currentIndex];
     _answers[currentQ.id] = answer;
 
-    // 2. Dinamik Soru Ekleme (Branching Logic)
-    // Eğer bu soruya verilen cevap, bir alt soruyu tetikliyorsa:
     var rawQuestions = getQuestions();
-
-    // Bu soruya bağlı alt soruları bul
     var childQuestions = rawQuestions
         .where((q) => q.parentId == currentQ.id)
         .toList();
 
     for (var child in childQuestions) {
-      // Eğer tetikleyici cevap eşleşiyorsa (Örn: trigger=true ve cevap=true)
       if (child.triggerAnswer == answer) {
-        // Bu alt soruyu, şu anki sorudan hemen sonraya ekle!
         if (!_displayQuestions.any((q) => q.id == child.id)) {
           _displayQuestions.insert(_currentIndex + 1, child);
         }
       } else {
-        // Eğer cevap eşleşmiyorsa ve o soru listede varsa çıkar (Kullanıcı fikrini değiştirirse)
         _displayQuestions.removeWhere((q) => q.id == child.id);
       }
     }
 
-    // 3. İlerle veya Bitir
     if (_currentIndex < _displayQuestions.length - 1) {
       setState(() {
         _currentIndex++;
       });
+      // GÜNCELLEME: Yeni soruya geçince seçeneklerle birlikte oku
+      _speakQuestionAndOptions(_displayQuestions[_currentIndex]);
     } else {
       _finishTest();
     }
   }
 
   void _finishTest() {
-    // --- PUAN HESAPLAMA (Demo Algoritması) ---
-    int totalScore = 0;
+    _ttsService.stop(); // Sesi burada durduruyoruz (Önceki soruyu kessin)
 
-    // Basit bir mantık: Her "Evet" 2 puan, Yaş > 40 ise 2 puan vb.
+    // Puan hesaplama mantığın aynı kalıyor...
+    int totalScore = 0;
     _answers.forEach((key, value) {
-      if (value == true) totalScore += 3; // Evet cevapları risklidir
-      if (value is int && value > 40) totalScore += 2; // Yaş riski
+      if (value == true) totalScore += 3;
+      if (value is int && value > 40) totalScore += 2;
       if (value.toString() == "Anne / Kız Kardeş") {
         totalScore += 5;
-      } // Genetik risk
+      }
     });
 
+    // Sayfa geçişi
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => ResultScreen(score: totalScore)),
     );
   }
 
-  // --- ARAYÜZ ---
+  // DÜZELTME: Dispose metodu artık doğru yerde (Fonksiyon içinde değil, sınıf seviyesinde)
+  @override
+  void dispose() {
+    _ttsService.stop();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     Question currentQ = _displayQuestions[_currentIndex];
@@ -101,21 +115,26 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            // SORU METNİ
             Container(
               padding: const EdgeInsets.all(20),
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(15),
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
+                boxShadow: [
+                  const BoxShadow(color: Colors.black12, blurRadius: 5),
+                ],
               ),
               child: Column(
                 children: [
-                  const Icon(
-                    Icons.record_voice_over,
-                    color: AppColors.primary,
-                    size: 40,
+                  IconButton(
+                    // GÜNCELLEME: İkona basınca soru ve seçenekleri tekrar eder
+                    onPressed: () => _speakQuestionAndOptions(currentQ),
+                    icon: const Icon(
+                      Icons.record_voice_over,
+                      color: AppColors.primary,
+                      size: 40,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -127,10 +146,7 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
               ),
             ),
             const Spacer(),
-
-            // CEVAP ALANI (Tipe göre değişir)
             _buildInputArea(currentQ),
-
             const Spacer(),
           ],
         ),
@@ -182,15 +198,11 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
               )
               .toList(),
         );
-
-
     }
   }
 }
 
-// --- YARDIMCI WIDGETLAR ---
-
-// Büyük Seçim Butonu
+// --- YARDIMCI WIDGETLAR (Aynı Kaldı) ---
 class _BigButton extends StatelessWidget {
   final String text;
   final Color color;
@@ -207,7 +219,7 @@ class _BigButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 120, // Parmağı zorlamayacak kadar büyük
+      height: 120,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
@@ -237,7 +249,6 @@ class _BigButton extends StatelessWidget {
   }
 }
 
-// Numara Girici (+ / - Sayacı)
 class _NumberInput extends StatefulWidget {
   final Function(int) onConfirm;
   const _NumberInput({required this.onConfirm});
@@ -247,7 +258,7 @@ class _NumberInput extends StatefulWidget {
 }
 
 class _NumberInputState extends State<_NumberInput> {
-  int value = 25; // Varsayılan değer
+  int value = 25;
 
   @override
   Widget build(BuildContext context) {

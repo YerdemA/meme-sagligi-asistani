@@ -1,31 +1,74 @@
 import 'package:flutter/material.dart';
 import '../config/constants.dart';
+import '../services/tts_service.dart';
 
-class ResultScreen extends StatelessWidget {
-  final int score; // Hesaplanan risk puanı buraya gelecek
+class ResultScreen extends StatefulWidget {
+  final int score;
 
   const ResultScreen({super.key, required this.score});
 
   @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  final TtsService _ttsService = TtsService();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // DÜZELTME: Sayfa geçiş animasyonuyla çakışmaması için 800ms gecikme eklendi.
+    // Bu, sesin "Risk" diyip takılmasını engeller.
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        _speakResult();
+      }
+    });
+  }
+
+  void _speakResult() {
+    String ttsMessage;
+
+    if (widget.score < 4) {
+      ttsMessage = "Harika görünüyorsunuz. Düzenli kontrollere devam edin.";
+    } else if (widget.score < 9) {
+      ttsMessage =
+          "Dikkatli olmanızda fayda var. Kendi kendine muayeneyi aksatmayın.";
+    } else {
+      ttsMessage =
+          "Lütfen en kısa sürede bir doktora görünün. Tedbir almak hayat kurtarır.";
+    }
+
+    // GÜNCELLEME: Önce varsa eski sesi durdurup sonra temiz bir başlangıç yapar.
+    _ttsService.stop().then((_) {
+      _ttsService.speak("Risk Analizi Sonucu. $ttsMessage");
+    });
+  }
+
+  @override
+  void dispose() {
+    _ttsService.stop();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Puana göre mesaj ve renk belirleme mantığı
+    // Görsel yapı ve mesajlar orijinal haliyle korundu
     String message;
     Color color;
     IconData icon;
 
-    if (score < 4) {
-      // Düşük Risk
+    if (widget.score < 4) {
       message = "Harika görünüyorsunuz!\nDüzenli kontrollere devam edin.";
       color = AppColors.success;
       icon = Icons.sentiment_very_satisfied;
-    } else if (score < 9) {
-      // Orta Risk
+    } else if (widget.score < 9) {
       message =
           "Dikkatli olmanızda fayda var.\nKendi kendine muayeneyi aksatmayın.";
       color = AppColors.warning;
       icon = Icons.sentiment_neutral;
     } else {
-      // Yüksek Risk
       message =
           "Lütfen en kısa sürede bir doktora görünün.\nTedbir almak hayat kurtarır.";
       color = AppColors.danger;
@@ -53,7 +96,6 @@ class ResultScreen extends StatelessWidget {
             ),
             const SizedBox(height: 50),
 
-            // Ana Menüye Dön Butonu
             SizedBox(
               width: double.infinity,
               height: 60,
@@ -63,7 +105,7 @@ class ResultScreen extends StatelessWidget {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () {
-                  // Tüm geçmişi silip ana sayfaya atar
+                  _ttsService.stop();
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 },
                 child: const Text(
