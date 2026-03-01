@@ -8,10 +8,14 @@ class TtsService {
 
   final FlutterTts _flutterTts = FlutterTts();
 
-  Future<void> speak(String text) async {
+  // GÜNCELLEME: rate parametresi eklendi. Varsayılan (default) değeri 0.5 yapıldı.
+  Future<void> speak(String text, {double rate = 0.5}) async {
     await _flutterTts.setLanguage("tr-TR"); // Türkçe dil ayarı
     await _flutterTts.setPitch(1.0); // Ses tonu
-    await _flutterTts.setSpeechRate(0.8); // Okuma hızı (İdeal seviye)
+
+    // Gönderilen rate değerine göre hız ayarlanır
+    await _flutterTts.setSpeechRate(rate);
+
     await _flutterTts.speak(text);
   }
 

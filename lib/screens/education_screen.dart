@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart'; // Ses çalmak için
 import '../config/constants.dart';
-import '../data/slide_data.dart'; // Verileri buradan çekeceğiz
+import '../data/slide_data.dart';
 import '../models/slide_model.dart';
+import '../services/tts_service.dart';
 
 class EducationScreen extends StatefulWidget {
   const EducationScreen({super.key});
@@ -12,40 +12,28 @@ class EducationScreen extends StatefulWidget {
 }
 
 class _EducationScreenState extends State<EducationScreen> {
-  // Slaytları ve sayfa kontrolcüsünü tanımlayalım
   late List<Slide> _slides;
   final PageController _pageController = PageController();
   int _currentIndex = 0;
 
-  // Ses oynatıcı
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  final TtsService _ttsService = TtsService();
 
   @override
   void initState() {
     super.initState();
-    _slides = getSlides(); // data/slide_data.dart'tan verileri çek
-    _playAudio(_currentIndex); // İlk sayfa açılınca sesi çal
+    _slides = getSlides();
+
+    // Sayfa ilk açıldığında ilk slaytı YAVAŞ okur (0.38 hızıyla)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ttsService.speak(_slides[_currentIndex].text, rate: 0.38);
+    });
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _audioPlayer
-        .dispose(); // Sayfadan çıkınca ses çaları kapat (Hafıza sızıntısını önler)
+    _ttsService.stop();
     super.dispose();
-  }
-
-  // Sesi çalma fonksiyonu
-  Future<void> _playAudio(int index) async {
-    try {
-      await _audioPlayer.stop(); // Önceki ses varsa durdur
-      // AssetSource, 'assets/' öneki olmadan çalışır, sadece klasör yolunu ver
-      // Örn: assets/audio/slide1.mp3 -> audio/slide1.mp3
-      String cleanPath = _slides[index].audioPath.replaceFirst('assets/', '');
-      await _audioPlayer.play(AssetSource(cleanPath));
-    } catch (e) {
-      debugPrint("Ses dosyası bulunamadı veya hata: $e");
-    }
   }
 
   @override
@@ -58,7 +46,6 @@ class _EducationScreenState extends State<EducationScreen> {
       ),
       body: Column(
         children: [
-          // --- SLAYT ALANI (PageView) ---
           Expanded(
             child: PageView.builder(
               controller: _pageController,
@@ -67,7 +54,8 @@ class _EducationScreenState extends State<EducationScreen> {
                 setState(() {
                   _currentIndex = index;
                 });
-                _playAudio(index); // Sayfa değişince sesi çal
+                // Sayfa değişince yeni metni YAVAŞ okur
+                _ttsService.speak(_slides[index].text, rate: 0.38);
               },
               itemBuilder: (context, index) {
                 return _buildSlideItem(_slides[index]);
@@ -75,14 +63,13 @@ class _EducationScreenState extends State<EducationScreen> {
             ),
           ),
 
-          // --- ALT KONTROL PANELİ ---
+          // ALT KONTROL PANELİ
           Container(
             padding: const EdgeInsets.all(20),
             color: Colors.white,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // GERİ BUTONU
                 if (_currentIndex > 0)
                   _buildNavButton(
                     icon: Icons.arrow_back_ios,
@@ -96,8 +83,8 @@ class _EducationScreenState extends State<EducationScreen> {
                     },
                   )
                 else
-                  const SizedBox(width: 80), // Boşluk tutucu
-                // SAYFA GÖSTERGESİ (Noktalar)
+                  const SizedBox(width: 80),
+
                 Row(
                   children: List.generate(
                     _slides.length,
@@ -115,7 +102,6 @@ class _EducationScreenState extends State<EducationScreen> {
                   ),
                 ),
 
-                // İLERİ / BİTİR BUTONU
                 if (_currentIndex < _slides.length - 1)
                   _buildNavButton(
                     icon: Icons.arrow_forward_ios,
@@ -136,7 +122,7 @@ class _EducationScreenState extends State<EducationScreen> {
                     color: AppColors.success,
                     isRight: true,
                     onTap: () {
-                      Navigator.pop(context); // Ana sayfaya dön
+                      Navigator.pop(context);
                     },
                   ),
               ],
@@ -147,14 +133,12 @@ class _EducationScreenState extends State<EducationScreen> {
     );
   }
 
-  // Tekil Slayt Tasarımı
   Widget _buildSlideItem(Slide slide) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Resim Alanı
           Expanded(
             flex: 3,
             child: Container(
@@ -162,45 +146,56 @@ class _EducationScreenState extends State<EducationScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 10),
+                ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  slide.imagePath,
-                  fit: BoxFit.contain, // Resmi sığdır
-                  errorBuilder: (context, error, stackTrace) {
-                    // Resim bulunamazsa gösterilecek yedek ikon
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.image_not_supported,
-                          size: 50,
-                          color: Colors.grey,
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Center(
+                      child: Image.asset(
+                        slide.imagePath,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.image_not_supported,
+                            size: 50,
+                            color: Colors.grey,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 10,
+                    top: 10,
+                    child: CircleAvatar(
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.8),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.record_voice_over,
+                          color: Colors.white,
                         ),
-                        Text(
-                          "Görsel Bulunamadı\n(${slide.imagePath})",
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                        // İkona basıldığında da YAVAŞ okur
+                        onPressed: () =>
+                            _ttsService.speak(slide.text, rate: 0.38),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           const SizedBox(height: 30),
-
-          // Metin Alanı
           Expanded(
             flex: 2,
             child: SingleChildScrollView(
-              // Metin çok uzunsa kaydırılabilsin
               child: Text(
                 slide.text,
                 style: AppTextStyles.header.copyWith(
-                  fontSize: 22, // Biraz daha okunaklı
+                  fontSize: 22,
                   color: AppColors.textDark,
                 ),
                 textAlign: TextAlign.center,
@@ -212,7 +207,6 @@ class _EducationScreenState extends State<EducationScreen> {
     );
   }
 
-  // Navigasyon Buton Tasarımı
   Widget _buildNavButton({
     required IconData icon,
     required String label,
@@ -222,6 +216,7 @@ class _EducationScreenState extends State<EducationScreen> {
   }) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(30),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
@@ -231,7 +226,7 @@ class _EducationScreenState extends State<EducationScreen> {
         child: Row(
           children: [
             if (!isRight) Icon(icon, color: color),
-            if (!isRight) SizedBox(width: 5),
+            if (!isRight) const SizedBox(width: 5),
             Text(
               label,
               style: TextStyle(
@@ -240,7 +235,7 @@ class _EducationScreenState extends State<EducationScreen> {
                 fontSize: 16,
               ),
             ),
-            if (isRight) SizedBox(width: 5),
+            if (isRight) const SizedBox(width: 5),
             if (isRight) Icon(icon, color: color),
           ],
         ),
