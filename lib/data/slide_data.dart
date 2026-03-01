@@ -1,30 +1,31 @@
 import '../models/slide_model.dart';
 
-// Demo için slayt listesi
+// Klasör yapısına ve yeni dosya isimlerine göre güncellenmiş slayt listesi
 List<Slide> getSlides() {
   return [
     Slide(
-      imagePath: 'assets/images/slide1.png', // Bu resimleri bulman gerekecek
+      imagePath: 'assets/education/gorsel1.png', // Klasör yolunu düzelttik
       text: 'Aynanın karşısına geçin ve ellerinizi belinize koyun.',
-      audioPath: 'assets/audio/slide1.mp3',
+      audioPath:
+          '', // Artık TTS (seslendirme) kullandığımız için burayı boş bırakabilirsin
     ),
     Slide(
-      imagePath: 'assets/images/slide2.png',
+      imagePath: 'assets/education/gorsel2.png',
       text:
           'Memelerinizin şeklinde veya renginde bir değişiklik var mı kontrol edin.',
-      audioPath: 'assets/audio/slide2.mp3',
+      audioPath: '',
     ),
     Slide(
-      imagePath: 'assets/images/slide3.png',
+      imagePath: 'assets/education/gorsel3.png',
       text:
           'Kollarınızı yukarı kaldırın ve aynı değişiklikleri tekrar gözlemleyin.',
-      audioPath: 'assets/audio/slide3.mp3',
+      audioPath: '',
     ),
     Slide(
-      imagePath: 'assets/images/slide4.png',
+      imagePath: 'assets/education/gorsel4.png',
       text:
           'Sırtüstü uzanın. Sağ elinizle sol memenizi, sol elinizle sağ memenizi dairesel hareketlerle yoklayın.',
-      audioPath: 'assets/audio/slide4.mp3',
+      audioPath: '',
     ),
   ];
 }

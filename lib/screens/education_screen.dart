@@ -16,6 +16,7 @@ class _EducationScreenState extends State<EducationScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
 
+  // TTS Servis nesnesi
   final TtsService _ttsService = TtsService();
 
   @override
@@ -32,7 +33,7 @@ class _EducationScreenState extends State<EducationScreen> {
   @override
   void dispose() {
     _pageController.dispose();
-    _ttsService.stop();
+    _ttsService.stop(); // Sayfadan çıkınca sesi susturur
     super.dispose();
   }
 
@@ -63,7 +64,7 @@ class _EducationScreenState extends State<EducationScreen> {
             ),
           ),
 
-          // ALT KONTROL PANELİ
+          // --- ALT KONTROL PANELİ ---
           Container(
             padding: const EdgeInsets.all(20),
             color: Colors.white,
@@ -133,80 +134,78 @@ class _EducationScreenState extends State<EducationScreen> {
     );
   }
 
+  // --- GÜNCELLENEN SLAYT TASARIMI ---
   Widget _buildSlideItem(Slide slide) {
     return Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(
-            flex: 3,
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 10),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Center(
-                      child: Image.asset(
-                        slide.imagePath,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.image_not_supported,
-                            size: 50,
-                            color: Colors.grey,
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 10,
-                    top: 10,
-                    child: CircleAvatar(
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.8),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.record_voice_over,
-                          color: Colors.white,
+          // Çerçevenin resme yapışması için Container kullanıldı
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(color: Colors.black12, blurRadius: 10),
+              ],
+            ),
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    slide.imagePath,
+                    width: double.infinity, // Genişliği tam kullanır
+                    fit: BoxFit
+                        .fitWidth, // Yüksekliği resme göre ayarlar (Boşlukları siler)
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Padding(
+                        padding: EdgeInsets.all(40.0),
+                        child: Icon(
+                          Icons.image_not_supported,
+                          size: 50,
+                          color: Colors.grey,
                         ),
-                        // İkona basıldığında da YAVAŞ okur
-                        onPressed: () =>
-                            _ttsService.speak(slide.text, rate: 0.38),
+                      );
+                    },
+                  ),
+                ),
+                Positioned(
+                  right: 10,
+                  top: 10,
+                  child: CircleAvatar(
+                    backgroundColor: AppColors.primary.withOpacity(0.8),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.record_voice_over,
+                        color: Colors.white,
                       ),
+                      onPressed: () =>
+                          _ttsService.speak(slide.text, rate: 0.38),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 30),
-          Expanded(
-            flex: 2,
-            child: SingleChildScrollView(
-              child: Text(
-                slide.text,
-                style: AppTextStyles.header.copyWith(
-                  fontSize: 22,
-                  color: AppColors.textDark,
-                ),
-                textAlign: TextAlign.center,
-              ),
+
+          const SizedBox(height: 40),
+
+          Text(
+            slide.text,
+            style: AppTextStyles.header.copyWith(
+              fontSize: 22,
+              color: AppColors.textDark,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 
+  // Navigasyon Buton Tasarımı
   Widget _buildNavButton({
     required IconData icon,
     required String label,
@@ -220,7 +219,7 @@ class _EducationScreenState extends State<EducationScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(30),
         ),
         child: Row(

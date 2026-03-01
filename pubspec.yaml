@@ -55,7 +55,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Resim ve ses klasörlerini buraya tanıtıyoruz
   assets:
-    - assets/images/
-    - assets/audio/
+    - assets/education/
