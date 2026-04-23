@@ -1,125 +1,132 @@
 import '../models/question_model.dart';
 
-List<Question> getQuestions() {
+List<RiskQuestion> getQuestions() {
   return [
-    // 1. Soru: Yaş
-    Question(
-      id: 1,
-      text: "Yaşınız kaç?",
-      audioPath: "assets/audio/q1_yas.mp3",
-      type: QuestionType.numeric,
-    ),
-
-    // 2. Soru: Ailede Var mı?
-    Question(
-      id: 2,
-      text: "Ailenizde veya yakın çevrenizde meme kanseri geçiren var mı?",
-      audioPath: "assets/audio/q2_aile.mp3",
-      type: QuestionType.yesNo,
-    ),
-
-    // 2.1 Bağlantılı Soru: Yakınlık Derecesi (Sadece Evet denirse çıkar)
-    Question(
-      id: 3,
-      parentId: 2, // 2. soruya bağlı
-      triggerAnswer: true, // 2. soruya 'Evet' (true) denirse göster
-      text: "Yakınlık derecesi nedir?",
-      audioPath: "assets/audio/q3_yakinlik.mp3",
+    // 1. Yaş Grubu
+    RiskQuestion(
+      apiKey: "yas_grubu",
+      questionText: "Lütfen yaş aralığınızı seçiniz.",
       type: QuestionType.selection,
-      options: ["Anne / Kız Kardeş", "Uzak Akraba"],
+      options: [
+        "30 yaş altı",
+        "30-39 yaş",
+        "40-49 yaş",
+        "50-59 yaş",
+        "60-69 yaş",
+        "70 yaş ve üzeri",
+      ],
+      valueMapper: (cevap) {
+        if (cevap == "30 yaş altı") return 0;
+        if (cevap == "30-39 yaş") return 1;
+        if (cevap == "40-49 yaş") return 2;
+        if (cevap == "50-59 yaş") return 3;
+        if (cevap == "60-69 yaş") return 4;
+        return 5;
+      },
     ),
-
-    // 3. Soru: Kitle gördünüz mü?
-    Question(
-      id: 4,
-      text: "Daha önce memenizde kitle veya bir sorun fark ettiniz mi?",
-      audioPath: "assets/audio/q4_kitle.mp3",
+    // 2. Aile Geçmişi
+    RiskQuestion(
+      apiKey: "birinci_derece_meme_ca",
+      questionText:
+          "Birinci derece yakınınızda (anne, kız kardeş, kızı) meme kanseri öyküsü var mı?",
       type: QuestionType.yesNo,
+      valueMapper: (cevap) => (cevap == true) ? 1 : 0,
     ),
-
-    // 4. Soru: Doğum
-    Question(
-      id: 5,
-      text: "Hiç doğum yaptınız mı?",
-      audioPath: "assets/audio/q5_dogum.mp3",
+    // 3. Erken Tanı
+    RiskQuestion(
+      apiKey: "erken_tani",
+      questionText:
+          "Ailenizde 50 yaşından önce meme kanseri tanısı almış biri var mı?",
       type: QuestionType.yesNo,
+      valueMapper: (cevap) => (cevap == true) ? 1 : 0,
     ),
-
-    // 5. Soru: Emzirme
-    Question(
-      id: 6,
-      text: "Emzirme durumunuz oldu mu?",
-      audioPath: "assets/audio/q6_emzirme.mp3",
+    // 4. Yumurtalık Kanseri
+    RiskQuestion(
+      apiKey: "yumurtalik_ca",
+      questionText: "Ailenizde yumurtalık kanseri öyküsü var mı?",
       type: QuestionType.yesNo,
+      valueMapper: (cevap) => (cevap == true) ? 1 : 0,
     ),
-
-    // 6. Soru: İlk Adet Yaşı
-    Question(
-      id: 7,
-      text: "İlk adet görme yaşınız kaçtı?",
-      audioPath: "assets/audio/q7_adet_yasi.mp3",
+    // 5. Kişisel Kanser
+    RiskQuestion(
+      apiKey: "kisisel_kanser",
+      questionText: "Daha önce herhangi bir kanser tedavisi gördünüz mü?",
+      type: QuestionType.yesNo,
+      valueMapper: (cevap) => (cevap == true) ? 1 : 0,
+    ),
+    // 6. Biyopsi
+    RiskQuestion(
+      apiKey: "biyopsi",
+      questionText:
+          "Daha önce şüpheli bir durum nedeniyle meme biyopsisi yaptırdınız mı?",
+      type: QuestionType.yesNo,
+      valueMapper: (cevap) => (cevap == true) ? 1 : 0,
+    ),
+    // 7. İlk Adet Yaşı (Numeric)
+    RiskQuestion(
+      apiKey: "ilk_adet",
+      questionText: "İlk adet gördüğünüz yaş kaçtır?",
       type: QuestionType.numeric,
+      valueMapper: (cevap) => cevap, // Sayıyı doğrudan yolla
     ),
-
-    // 7. Soru: Menopoz
-    Question(
-      id: 8,
-      text: "Menopoza girdiniz mi?",
-      audioPath: "assets/audio/q8_menopoz.mp3",
+    // 8. Doğum
+    RiskQuestion(
+      apiKey: "dogum",
+      questionText:
+          "İlk canlı doğumunuzu 30 yaşından sonra mı yaptınız veya hiç doğum yapmadınız mı?",
       type: QuestionType.yesNo,
+      valueMapper: (cevap) => (cevap == true) ? 1 : 0,
     ),
-
-    // 7.1 Bağlantılı Soru: Menopoz Yaşı
-    Question(
-      id: 9,
-      parentId: 8,
-      triggerAnswer: true,
-      text: "Kaç yaşında menopoza girdiniz?",
-      audioPath: "assets/audio/q9_menopoz_yasi.mp3",
-      type: QuestionType.numeric,
-    ),
-
-    // 8. Soru: Hormon İlacı
-    Question(
-      id: 10,
-      text: "Hormon ilacı kullandınız mı?",
-      audioPath: "assets/audio/q10_hormon.mp3",
-      type: QuestionType.yesNo,
-    ),
-
-    // 8.1 Bağlantılı Soru: İlaç Türü
-    Question(
-      id: 11,
-      parentId: 10,
-      triggerAnswer: true,
-      text: "Hangi ilacı kullandınız?",
-      audioPath: "assets/audio/q11_ilac_turu.mp3",
+    // 9. BMI Grubu
+    RiskQuestion(
+      apiKey: "bmi_grubu",
+      questionText: "Vücut kitle indeksiniz (BMI) hangi aralıkta?",
       type: QuestionType.selection,
-      options: ["Doğum Kontrol Hapı", "Menopoz İlacı"],
+      options: ["Zayıf / Normal", "Fazla Kilolu", "Obez", "Aşırı Obez"],
+      valueMapper: (cevap) {
+        if (cevap == "Zayıf / Normal") return 0;
+        if (cevap == "Fazla Kilolu") return 1;
+        if (cevap == "Obez") return 2;
+        return 3;
+      },
     ),
-
-    // 9. Soru: Kilo
-    Question(
-      id: 12,
-      text: "Kilonuz kaç?",
-      audioPath: "assets/audio/q12_kilo.mp3",
-      type: QuestionType.numeric,
+    // 10. Alkol
+    RiskQuestion(
+      apiKey: "alkol",
+      questionText: "Alkol tüketim alışkanlığınız nedir?",
+      type: QuestionType.selection,
+      options: [
+        "Hiç kullanmıyorum",
+        "Haftada 1-2 kadeh",
+        "Düzenli kullanıyorum",
+      ],
+      valueMapper: (cevap) {
+        if (cevap == "Hiç kullanmıyorum") return 0;
+        if (cevap == "Haftada 1-2 kadeh") return 1;
+        return 2;
+      },
     ),
-
-    // 10. Soru: Sigara
-    Question(
-      id: 13,
-      text: "Sigara kullanıyor musunuz?",
-      audioPath: "assets/audio/q13_sigara.mp3",
+    // 11. Fiziksel Aktivite
+    RiskQuestion(
+      apiKey: "fiziksel_aktivite",
+      questionText: "Haftada en az 3 gün, 30 dakika egzersiz yapıyor musunuz?",
       type: QuestionType.yesNo,
+      valueMapper: (cevap) => (cevap == true) ? 1 : 0,
     ),
-
-    // 11. Soru: Alkol
-    Question(
-      id: 14,
-      text: "Alkol kullanıyor musunuz?",
-      audioPath: "assets/audio/q14_alkol.mp3",
+    // 12. Mamografi
+    RiskQuestion(
+      apiKey: "mamografi",
+      questionText: "Düzenli mamografi taraması yaptırıyor musunuz?",
       type: QuestionType.yesNo,
+      valueMapper: (cevap) => (cevap == true) ? 1 : 0,
+    ),
+    // 13. KKMM (Kendi Kendine Meme Muayenesi)
+    RiskQuestion(
+      apiKey: "kkmm_aliskanlik",
+      questionText:
+          "Her ay Kendi Kendine Meme Muayenesi (KKMM) yapıyor musunuz?",
+      type: QuestionType.yesNo,
+      valueMapper: (cevap) => (cevap == true) ? 1 : 0,
     ),
   ];
 }
