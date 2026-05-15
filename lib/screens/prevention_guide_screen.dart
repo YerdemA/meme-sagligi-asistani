@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/tts_service.dart'; // TTS servis yolunu projene göre kontrol et
+import '../services/tts_service.dart';
 
 class PreventionGuideScreen extends StatefulWidget {
   const PreventionGuideScreen({super.key});
@@ -9,26 +9,30 @@ class PreventionGuideScreen extends StatefulWidget {
 }
 
 class _PreventionGuideScreenState extends State<PreventionGuideScreen> {
+  // Merkezi (Singleton) TTS Servisini çağırıyoruz
   final TtsService _ttsService = TtsService();
 
   @override
   void initState() {
     super.initState();
-    // Sayfa oluşturulduktan hemen sonra sesli okumayı başlat
+    // Sayfa oluşturulduktan hemen sonra tüm metni okumayı başlat
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _speakPreventionGuide();
+      _speakFullGuide();
     });
   }
 
-  // Rehber içeriğini özetleyen okuma fonksiyonu
-  void _speakPreventionGuide() {
-    String textToSpeak =
-        "Sağlıklı Yaşam Rehberine Hoş Geldiniz. Meme kanserinden korunmak için: "
-        "Meyve ve sebze ağırlıklı beslenin, haftada en az yüz elli dakika egzersiz yapın, "
-        "ideal kilonuzu koruyun ve alkol ile tütün ürünlerinden uzak durun. "
-        "Unutmayın, erken teşhis hayat kurtarır.";
+  // Ekrandaki tüm metni sırasıyla okuyan fonksiyon
+  void _speakFullGuide() {
+    String fullText =
+        "Sağlıklı Yaşam Rehberi. Kansere Karşı Korunma Yolları. "
+        "Birinci madde, Sağlıklı Beslenme: Meyve, sebze ve tam tahıllar açısından zengin bir diyet benimseyin. İşlenmiş gıdalardan uzak durun. "
+        "İkinci madde, Düzenli Egzersiz: Haftada en az 150 dakika orta tempolu egzersiz, hormonal dengeyi koruyarak riski azaltır. "
+        "Üçüncü madde, Kilo Kontrolü: Özellikle menopoz sonrası sağlıklı bir vücut kitle indeksine sahip olmak kritiktir. "
+        "Dördüncü madde, Zararlı Alışkanlıklar: Alkol tüketimini sınırlandırın ve tütün ürünlerinden tamamen uzak durun. "
+        "Son olarak, Erken Teşhisin Önemi: Meme kanseri erken evrede teşhis edildiğinde tedavi başarı oranı yüzde 90'ın üzerindedir. Bu nedenle aylık muayene ve yıllık doktor kontrollerini ihmal etmeyin.";
 
-    _ttsService.speak(textToSpeak, rate: 0.45);
+    _ttsService.stop(); // Varsa önceki konuşmayı kes
+    _ttsService.speak(fullText, rate: 0.45);
   }
 
   @override
@@ -44,9 +48,9 @@ class _PreventionGuideScreenState extends State<PreventionGuideScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F8),
-      // Kullanıcının sesi tekrar dinleyebilmesi için bir buton ekleyelim
+      // Kullanıcının sayfanın tamamını tekrar dinleyebilmesi için
       floatingActionButton: FloatingActionButton(
-        onPressed: _speakPreventionGuide,
+        onPressed: _speakFullGuide,
         backgroundColor: primaryColor,
         child: const Icon(Icons.volume_up, color: Colors.white),
       ),
@@ -105,19 +109,36 @@ class _PreventionGuideScreenState extends State<PreventionGuideScreen> {
                   _buildSectionTitle("Erken Teşhisin Önemi"),
                   const SizedBox(height: 15),
 
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: primaryColor.withOpacity(0.2)),
-                    ),
-                    child: const Text(
-                      "Meme kanseri erken evrede teşhis edildiğinde tedavi başarı oranı %90'ın üzerindedir. Bu nedenle aylık muayene ve yıllık doktor kontrollerini ihmal etmeyin.",
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 1.5,
-                        color: Colors.black87,
+                  // Bu kutuya da tıklanabilirlik (erişilebilirlik) ekledik
+                  GestureDetector(
+                    onTap: () {
+                      _ttsService.stop();
+                      _ttsService.speak(
+                        "Erken Teşhisin Önemi: Meme kanseri erken evrede teşhis edildiğinde tedavi başarı oranı yüzde 90'ın üzerindedir. Bu nedenle aylık muayene ve yıllık doktor kontrollerini ihmal etmeyin.",
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: primaryColor.withOpacity(0.2),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        "Meme kanseri erken evrede teşhis edildiğinde tedavi başarı oranı %90'ın üzerindedir. Bu nedenle aylık muayene ve yıllık doktor kontrollerini ihmal etmeyin.",
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.5,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
                   ),
@@ -145,52 +166,63 @@ class _PreventionGuideScreenState extends State<PreventionGuideScreen> {
   }
 
   Widget _buildInfoCard(IconData icon, String title, String desc, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          // Kullanıcı spesifik bir karta dokunursa sadece onu okur
+          _ttsService.stop();
+          _ttsService.speak("$title. $desc");
+        },
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 24),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10),
+            ],
           ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  desc,
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      desc,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

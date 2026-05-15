@@ -15,21 +15,29 @@ class _EducationScreenState extends State<EducationScreen> {
   late List<Slide> _slides;
   final PageController _pageController = PageController();
   int _currentIndex = 0;
+
+  // Singleton TTS Servisi (Ana Ekrandaki şaltere duyarlıdır)
   final TtsService _ttsService = TtsService();
 
   @override
   void initState() {
     super.initState();
     _slides = getSlides();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ttsService.speak(_slides[_currentIndex].text, rate: 0.50);
+      // Sayfa açıldığında bağlamı da okuyarak başla
+      if (_slides.isNotEmpty) {
+        _ttsService.speak(
+          "Nasıl Muayene Olunur? Adım 1: ${_slides[_currentIndex].text}",
+        );
+      }
     });
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _ttsService.stop();
+    _ttsService.stop(); // Sayfadan çıkıldığında sesi kes
     super.dispose();
   }
 
@@ -55,7 +63,10 @@ class _EducationScreenState extends State<EducationScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    _ttsService.stop();
+                    Navigator.pop(context);
+                  },
                   icon: const Icon(
                     Icons.arrow_back_ios_new,
                     color: Colors.white,
@@ -85,7 +96,9 @@ class _EducationScreenState extends State<EducationScreen> {
                 setState(() {
                   _currentIndex = index;
                 });
-                _ttsService.speak(_slides[index].text, rate: 0.50);
+                // Seslerin birbirine karışmaması için önce sustur, sonra yeni adımı oku
+                _ttsService.stop();
+                _ttsService.speak("Adım ${index + 1}: ${_slides[index].text}");
               },
               itemBuilder: (context, index) {
                 return _buildSlideItem(_slides[index]);
@@ -157,6 +170,9 @@ class _EducationScreenState extends State<EducationScreen> {
                   isRight: true,
                   onTap: () {
                     if (_currentIndex == _slides.length - 1) {
+                      _ttsService.speak(
+                        "Eğitim tamamlandı. Ana ekrana yönlendiriliyorsunuz.",
+                      );
                       Navigator.pop(context);
                     } else {
                       _pageController.nextPage(
@@ -212,14 +228,17 @@ class _EducationScreenState extends State<EducationScreen> {
                         ),
                   ),
                 ),
-                // SES İKONU (Yarım şeffaf şık buton)
+                // SES İKONU (Kullanıcı manuel basarsa global ayara göre çalışır)
                 Positioned(
                   right: 15,
                   bottom: 15,
                   child: FloatingActionButton.small(
                     elevation: 2,
                     backgroundColor: Colors.white.withOpacity(0.9),
-                    onPressed: () => _ttsService.speak(slide.text, rate: 0.50),
+                    onPressed: () {
+                      _ttsService.stop();
+                      _ttsService.speak(slide.text);
+                    },
                     child: const Icon(
                       Icons.volume_up_rounded,
                       color: AppColors.primary,
@@ -230,6 +249,7 @@ class _EducationScreenState extends State<EducationScreen> {
             ),
           ),
           const SizedBox(height: 40),
+
           // METİN ALANI
           Text(
             slide.text,

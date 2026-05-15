@@ -14,18 +14,18 @@ class AssessmentScreen extends StatefulWidget {
 
 class _AssessmentScreenState extends State<AssessmentScreen>
     with TickerProviderStateMixin {
+  // Merkezi (Singleton) TTS Servisi çağrılır
   final TtsService _ttsService = TtsService();
+
   List<RiskQuestion> _questions = [];
   int _currentIndex = 0;
   final Map<String, dynamic> _apiData = {};
 
-  // Animasyon kontrolcüleri — mantık değişmedi, sadece görsel geçiş için eklendi
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
   bool _isForward = true;
 
-  // Ana sayfa ile aynı renk paleti
   static const Color _rosePrimary = Color(0xFFC2185B);
   static const Color _roseDeep = Color(0xFFAD1457);
   static const Color _bgPage = Color(0xFFF0F4F8);
@@ -39,47 +39,60 @@ class _AssessmentScreenState extends State<AssessmentScreen>
     super.initState();
     _questions = getQuestions();
 
-    // Slide animasyonu kurulumu
     _slideController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 280),
     );
+
     _slideAnimation =
         Tween<Offset>(begin: const Offset(1.0, 0), end: Offset.zero).animate(
           CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
         );
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+
     _slideController.forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_questions.isNotEmpty) {
-        _speakQuestionAndOptions(_questions[_currentIndex]);
+        // İlk soru için giriş metni eklendi
+        _speakQuestionAndOptions(
+          _questions[_currentIndex],
+          prefix: "Risk değerlendirmesi başlıyor. Soru 1: ",
+        );
       }
     });
   }
 
-  // — TTS mantığı değişmedi —
-  void _speakQuestionAndOptions(RiskQuestion q) {
-    String textToSpeak = q.questionText;
+  // Akıllı okuma fonksiyonu (Önceki seçimi de okuyabilmesi için prefix eklendi)
+  void _speakQuestionAndOptions(RiskQuestion q, {String prefix = ""}) {
+    String textToSpeak = prefix + q.questionText;
+
     if (q.type == QuestionType.yesNo) {
-      textToSpeak += ". Seçenekler: Hayır ve Evet.";
+      textToSpeak += ". Seçenekler: Evet veya Hayır.";
     } else if (q.type == QuestionType.selection && q.options != null) {
       textToSpeak += ". Seçenekler: ${q.options!.join(", ")}.";
+    } else if (q.type == QuestionType.numeric) {
+      textToSpeak += ". Lütfen listeden bir değer seçip onaylayın.";
     }
+
     _ttsService.speak(textToSpeak);
   }
 
-  // — Cevap mantığı değişmedi, animasyon tetikleme eklendi —
-  void _handleAnswer(dynamic answer) {
+  // Cevaplama ve otomatik seslendirme mantığı
+  void _handleAnswer(dynamic answer, String spokenAnswerText) {
     RiskQuestion currentQ = _questions[_currentIndex];
     _apiData[currentQ.apiKey] = currentQ.valueMapper!(answer);
+
+    _ttsService.stop(); // Yeni seslendirme için öncekini kes
 
     if (_currentIndex < _questions.length - 1) {
       _isForward = true;
       _slideController.reset();
+
       _slideAnimation =
           Tween<Offset>(begin: const Offset(1.0, 0), end: Offset.zero).animate(
             CurvedAnimation(
@@ -87,18 +100,24 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               curve: Curves.easeOutCubic,
             ),
           );
+
       setState(() => _currentIndex++);
       _slideController.forward();
-      _speakQuestionAndOptions(_questions[_currentIndex]);
+
+      // Kullanıcıya seçtiği cevabı onayla ve hemen yeni soruyu oku
+      String nextSpeech =
+          "$spokenAnswerText seçildi. Soru ${_currentIndex + 1}: ";
+      _speakQuestionAndOptions(_questions[_currentIndex], prefix: nextSpeech);
     } else {
+      // Test bittiğinde
+      _ttsService.speak(
+        "$spokenAnswerText seçildi. Değerlendirme tamamlandı. Verileriniz yapay zeka tarafından analiz ediliyor, lütfen ekranda bekleyin.",
+      );
       _finishAndSendToAI();
     }
   }
 
-  // — API mantığı değişmedi —
   void _finishAndSendToAI() async {
-    _ttsService.stop();
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -121,7 +140,6 @@ class _AssessmentScreenState extends State<AssessmentScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Animasyonlu AI ikonu
               Container(
                 width: 72,
                 height: 72,
@@ -147,7 +165,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 "İlk bağlantıda 40–60 saniye sürebilir.\nLütfen bekleyin.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -157,7 +175,6 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              // İlerleme çubuğu
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
@@ -175,6 +192,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
     try {
       final yapayZekaSonucu = await ApiService.riskAnaliziYap(_apiData);
       if (mounted) Navigator.pop(context);
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -185,7 +203,12 @@ class _AssessmentScreenState extends State<AssessmentScreen>
       }
     } catch (e) {
       if (mounted) Navigator.pop(context);
+
       if (mounted) {
+        _ttsService.speak(
+          "Bağlantı hatası. Lütfen internetinizi kontrol edip tekrar deneyin.",
+        );
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
@@ -204,7 +227,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
   @override
   void dispose() {
     _slideController.dispose();
-    _ttsService.stop(); // — mantık değişmedi —
+    _ttsService.stop();
     super.dispose();
   }
 
@@ -217,7 +240,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
       backgroundColor: _bgPage,
       body: Column(
         children: [
-          // ── 1. HEADER — Ana sayfanın SliverAppBar gradient mantığıyla uyumlu ──
+          // ── 1. HEADER ──
           _AssessmentHeader(
             currentIndex: _currentIndex,
             total: _questions.length,
@@ -228,7 +251,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
             },
           ),
 
-          // ── 2. İÇERİK — Animasyonlu soru + cevap alanı ──
+          // ── 2. İÇERİK ──
           Expanded(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -243,6 +266,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                       // Soru kartı
                       _QuestionCard(
                         question: currentQ,
+                        // Kullanıcı ikona manuel basarsa sadece soruyu tekrar okur
                         onSpeakTap: () => _speakQuestionAndOptions(currentQ),
                         questionIndex: _currentIndex,
                         total: _questions.length,
@@ -250,8 +274,8 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                       const SizedBox(height: 24),
 
                       // Cevap seçenekleri başlığı
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4, bottom: 12),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 12),
                         child: Text(
                           "Seçeneğinizi seçin",
                           style: TextStyle(
@@ -268,7 +292,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
 
                       const SizedBox(height: 16),
 
-                      // Alt disclaimer — ana sayfayla uyumlu
+                      // Alt disclaimer
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -286,8 +310,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                "Bu değerlendirme tıbbi tanı koymaz. "
-                                "Farkındalık amaçlıdır.",
+                                "Bu değerlendirme tıbbi tanı koymaz. Farkındalık amaçlıdır.",
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Color(0xFF92400E),
@@ -309,7 +332,6 @@ class _AssessmentScreenState extends State<AssessmentScreen>
     );
   }
 
-  // — Cevap widget seçme mantığı değişmedi —
   Widget _buildInputArea(RiskQuestion q) {
     switch (q.type) {
       case QuestionType.yesNo:
@@ -321,7 +343,8 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               icon: Icons.check_circle_outline_rounded,
               accentColor: const Color(0xFFE53935),
               lightColor: const Color(0xFFFFEBEE),
-              onTap: () => _handleAnswer(true),
+              onTap: () =>
+                  _handleAnswer(true, "Evet"), // Sesli yanıt metni eklendi
             ),
             const SizedBox(height: 12),
             _AnswerCard(
@@ -330,14 +353,15 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               icon: Icons.cancel_outlined,
               accentColor: _teal,
               lightColor: const Color(0xFFE0F2F1),
-              onTap: () => _handleAnswer(false),
+              onTap: () =>
+                  _handleAnswer(false, "Hayır"), // Sesli yanıt metni eklendi
             ),
           ],
         );
-
       case QuestionType.numeric:
-        return _ModernNumberInput(onConfirm: (val) => _handleAnswer(val));
-
+        return _ModernNumberInput(
+          onConfirm: (val) => _handleAnswer(val, "$val değeri"),
+        );
       case QuestionType.selection:
         return Column(
           children: q.options!.asMap().entries.map((entry) {
@@ -349,7 +373,10 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                 icon: Icons.radio_button_unchecked_rounded,
                 accentColor: _rosePrimary,
                 lightColor: const Color(0xFFFCE4EC),
-                onTap: () => _handleAnswer(entry.value),
+                onTap: () => _handleAnswer(
+                  entry.value,
+                  entry.value,
+                ), // Sesli yanıt metni eklendi
               ),
             );
           }).toList(),
@@ -369,7 +396,6 @@ class _AssessmentHeader extends StatelessWidget {
   final VoidCallback onBack;
 
   static const Color _rosePrimary = Color(0xFFC2185B);
-  static const Color _roseDeep = Color(0xFFAD1457);
 
   const _AssessmentHeader({
     required this.currentIndex,
@@ -398,7 +424,6 @@ class _AssessmentHeader extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(8, 8, 20, 24),
           child: Column(
             children: [
-              // Üst satır — geri butonu + başlık + rozet
               Row(
                 children: [
                   IconButton(
@@ -419,7 +444,6 @@ class _AssessmentHeader extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // AI rozeti — ana sayfayla aynı stil
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -453,8 +477,6 @@ class _AssessmentHeader extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // Progress satırı
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Column(
@@ -538,7 +560,6 @@ class _QuestionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Üst satır — ikon + soru numarası etiketi
           Row(
             children: [
               GestureDetector(
@@ -569,8 +590,6 @@ class _QuestionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-
-          // Soru metni
           Text(
             question.questionText,
             style: const TextStyle(
@@ -629,7 +648,6 @@ class _AnswerCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // İkon kutusu — ana sayfanın kart tasarımıyla birebir aynı
               Container(
                 width: 48,
                 height: 48,
@@ -640,8 +658,6 @@ class _AnswerCard extends StatelessWidget {
                 child: Icon(icon, color: accentColor, size: 24),
               ),
               const SizedBox(width: 14),
-
-              // Metin
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,8 +683,6 @@ class _AnswerCard extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // Ok ikonu — ana sayfayla aynı
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
@@ -721,7 +735,6 @@ class _ModernNumberInputState extends State<_ModernNumberInput> {
       ),
       child: Column(
         children: [
-          // Sayı seçici
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -765,8 +778,6 @@ class _ModernNumberInputState extends State<_ModernNumberInput> {
             ],
           ),
           const SizedBox(height: 28),
-
-          // Onayla butonu — ana sayfanın buton stiliyle uyumlu
           SizedBox(
             width: double.infinity,
             height: 56,
